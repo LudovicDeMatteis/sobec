@@ -47,21 +47,21 @@ def buildRunningModels(robotWrapper, contactPattern, params):
         for k, cid in enumerate(robot.contactIds):
             if not pattern[k]:
                 continue
-            contact = croc.ContactModel6D(
-                state, cid, pin.SE3.Identity(), pin.WORLD, actuation.nu, p.baumgartGains
+            contact = croc.ContactModel(
+                state, pin.ContactType.Contact_6D, cid, pin.SE3.Identity(), pin.ReferenceFrame.WORLD, actuation.nu
             )
             contacts.addContact(robot.model.frames[cid].name + "_contact", contact)
         for k, cm in enumerate(robot.loop_constraints_models):
             assert cm.type == pin.ContactType.CONTACT_6D and cm.reference_frame == pin.ReferenceFrame.LOCAL
-            contact = croc.ContactModel6DLoop(
+            contact = croc.ContactModel(
                 state,
+                pin.ContactType.CONTACT_6D,
                 cm.joint1_id,
                 cm.joint1_placement,
                 cm.joint2_id,
                 cm.joint2_placement,
                 pin.ReferenceFrame.LOCAL,
                 actuation.nu,
-                np.array([0., 0.])
             )
             contacts.addContact(f"loop_contact_{k}", contact)
 
@@ -106,7 +106,7 @@ def buildRunningModels(robotWrapper, contactPattern, params):
             copResidual = sobec.ResidualModelCenterOfPressure(state, cid, actuation.nu)
             copAct = croc.ActivationModelWeightedQuad(
                 np.array([1.0 / p.footSize**2] * 2)
-            )
+            ) # ? This activation should be part of the cost ?
             copCost = croc.CostModelResidual(state, copAct, copResidual)
             if p.copWeight > 0:
                 costs.addCost(
@@ -367,10 +367,23 @@ def buildTerminalModel(robotWrapper, contactPattern, params):
     for k, cid in enumerate(robot.contactIds):
         if not pattern[k]:
             continue
-        contact = croc.ContactModel6D(
-            state, cid, pin.SE3.Identity(), pin.WORLD, actuation.nu, p.baumgartGains
+        contact = croc.ContactModel(
+            state, pin.ContactType.Contact_6D, cid, pin.SE3.Identity(), pin.ReferenceFrame.WORLD, actuation.nu
         )
         contacts.addContact(robot.model.frames[cid].name + "_contact", contact)
+    for k, cm in enumerate(robot.loop_constraints_models):
+        assert cm.type == pin.ContactType.CONTACT_6D and cm.reference_frame == pin.ReferenceFrame.LOCAL
+        contact = croc.ContactModel(
+            state,
+            pin.ContactType.CONTACT_6D,
+            cm.joint1_id,
+            cm.joint1_placement,
+            cm.joint2_id,
+            cm.joint2_placement,
+            pin.ReferenceFrame.LOCAL,
+            actuation.nu,
+        )
+        contacts.addContact(f"loop_contact_{k}", contact)
 
     # Costs
     costs = croc.CostModelSum(state, actuation.nu)

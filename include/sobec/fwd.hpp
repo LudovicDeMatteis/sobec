@@ -23,7 +23,8 @@
 #include <crocoddyl/core/utils/exception.hpp>
 #include <crocoddyl/multibody/actions/contact-fwddyn.hpp>
 #include <crocoddyl/multibody/actuations/floating-base.hpp>
-#include <crocoddyl/multibody/contacts/contact-6d.hpp>
+// #include <crocoddyl/multibody/contacts/contact-6d.hpp>
+#include <crocoddyl/multibody/contacts/contact-pin.hpp>
 #include <crocoddyl/multibody/contacts/multiple-contacts.hpp>
 //#include <crocoddyl/multibody/frames.hpp>
 #include <crocoddyl/multibody/fwd.hpp>
@@ -185,27 +186,11 @@ namespace newcontacts {
 
 // contact 6D
 template <typename Scalar>
-class ContactModel6DTpl;
-typedef ContactModel6DTpl<double> ContactModel6D;
+class ContactModelTpl;
+typedef ContactModelTpl<double> ContactModel;
 template <typename Scalar>
-class ContactData6DTpl;
-typedef ContactData6DTpl<double> ContactData6D;
-
-// contact 3D
-template <typename Scalar>
-class ContactModel3DTpl;
-typedef ContactModel3DTpl<double> ContactModel3D;
-template <typename Scalar>
-struct ContactData3DTpl;
-typedef ContactData3DTpl<double> ContactData3D;
-
-// contact 1D
-template <typename Scalar>
-class ContactModel1DTpl;
-typedef ContactModel1DTpl<double> ContactModel1D;
-template <typename Scalar>
-struct ContactData1DTpl;
-typedef ContactData1DTpl<double> ContactData1D;
+class ContactDataTpl;
+typedef ContactDataTpl<double> ContactData;
 
 // multiple contacts
 template <typename Scalar>

@@ -18,7 +18,7 @@
 #include <pinocchio/multibody/fwd.hpp>
 #include <pinocchio/spatial/motion.hpp>
 
-#include "crocoddyl/multibody/contacts/contact-6d.hpp"
+#include "crocoddyl/multibody/contacts/contact-pin.hpp"
 #include "crocoddyl/multibody/contacts/multiple-contacts.hpp"
 #include "crocoddyl/multibody/data/contacts.hpp"
 #include "sobec/fwd.hpp"
@@ -146,8 +146,8 @@ struct ResidualDataCenterOfFrictionTpl
     bool found_contact = false;
     for (auto &it : d->contacts->contacts) {
       if (it.second->frame == id) {
-        ContactData6DTpl<Scalar> *d6d =
-            dynamic_cast<ContactData6DTpl<Scalar> *>(it.second.get());
+        ContactDataTpl<Scalar> *d6d =
+            dynamic_cast<ContactDataTpl<Scalar> *>(it.second.get());
         if (d6d != NULL) {
           found_contact = true;
           this->contact = it.second;

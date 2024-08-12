@@ -10,6 +10,8 @@
 #include "crocoddyl/multibody/contacts/multiple-contacts.hpp"
 #include "pinocchio/spatial/se3.hpp"
 #include "sobec/walk-without-think/ocp.hpp"
+#include <pinocchio/algorithm/contact-info.hpp>
+#include <pinocchio/multibody/fwd.hpp>
 
 namespace sobec {
 
@@ -28,11 +30,11 @@ AMA OCPWalk::buildTerminalModel() {
        ++k) {  // k, cid in enumerate(robot.contactIds):
     if (contact_pattern(k, T) == 0.0) continue;
     int cid = robot->contactIds[k];
-    auto contact = boost::make_shared<ContactModel6D>(
-        state, cid, pinocchio::SE3::Identity(), actuation->get_nu(),
-        params->baumgartGains);
+    auto contact = boost::make_shared<ContactModel>(
+        state, pinocchio::ContactType::CONTACT_6D, cid, pinocchio::SE3::Identity(), pinocchio::ReferenceFrame::WORLD , actuation->get_nu());
     contacts->addContact(robot->model->frames[cid].name + "_contact", contact);
   }
+  // TODO Add closed loop contacts
 
   // Costs
   auto costs = boost::make_shared<CostModelSum>(state, actuation->get_nu());
@@ -50,7 +52,7 @@ AMA OCPWalk::buildTerminalModel() {
 
   auto damodel =
       boost::make_shared<crocoddyl::DifferentialActionModelContactFwdDynamics>(
-          state, actuation, contacts, costs, params->kktDamping, true);
+          state, actuation, contacts, costs, true);
   auto termmodel =
       boost::make_shared<IntegratedActionModelEuler>(damodel, params->DT);
 

@@ -2,6 +2,8 @@
 #include <crocoddyl/core/costs/residual.hpp>
 #include <crocoddyl/multibody/actions/contact-fwddyn.hpp>
 #include <crocoddyl/multibody/residuals/contact-force.hpp>
+#include <pinocchio/algorithm/contact-info.hpp>
+#include <pinocchio/multibody/fwd.hpp>
 
 #include "crocoddyl/multibody/contacts/multiple-contacts.hpp"
 #include "pinocchio/spatial/se3.hpp"
@@ -25,11 +27,11 @@ std::vector<AMA> OCPWalk::buildRunningModels() {
          ++k) {  // k, cid in enumerate(robot.contactIds):
       if (contact_pattern(k, i) == 0.0) continue;
       int cid = robot->contactIds[k];
-      auto contact = boost::make_shared<crocoddyl::ContactModel6D>(
-          state, cid, pinocchio::SE3::Identity(), actuation->get_nu(),
-          params->baumgartGains);
+      auto contact = boost::make_shared<crocoddyl::ContactModel>(
+          state, pinocchio::ContactType::CONTACT_6D, cid, pinocchio::SE3::Identity(), pinocchio::ReferenceFrame::WORLD, actuation->get_nu());
       contacts->addContact(robot->model->frames[cid].name + "_contact",
                            contact);
+    // TODO Add closed loop contacts
     }
 
     // Costs
@@ -292,7 +294,7 @@ std::vector<AMA> OCPWalk::buildRunningModels() {
 
     auto damodel = boost::make_shared<
         crocoddyl::DifferentialActionModelContactFwdDynamics>(
-        state, actuation, contacts, costs, params->kktDamping, true);
+        state, actuation, contacts, costs, true);
     AMA amodel =
         boost::make_shared<IntegratedActionModelEuler>(damodel, params->DT);
     models.push_back(amodel);
