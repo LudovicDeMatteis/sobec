@@ -8,8 +8,11 @@ from numpy.linalg import norm, pinv, inv, svd, eig  # noqa: F401
 import sobec
 import sobec.walk_without_think.plotter
 import specific_params
-from loaders_virgile import load_simplified
-
+# Since the actuation model is built from the model,
+# We load the robot from this script, that calls the loader itself.
+# We could save the model properties in order to have a fixed actuation model.
+from sobec.walk_without_think.actuation_model import battobotAct, model, dispWithBars
+from sobec.walk_without_think.actuation_model import robot as battobotRobot
 # #####################################################################################
 # ## TUNING ###########################################################################
 # #####################################################################################
@@ -19,13 +22,18 @@ from loaders_virgile import load_simplified
 # When setting them to >0, take care to uncomment the corresponding line.
 # All these lines are marked with the tag ##0##.
 
-walkParams = specific_params.WalkBattobotParams()
+# Adapted from loader virgile
+from loaders_virgile import load_3d
+
+robot = load_3d(battobotRobot)
+
+walkParams = specific_params.WalkBattobotParamsActuation()
 
 # #####################################################################################
 # ### LOAD ROBOT ######################################################################
 # #####################################################################################
 
-robot = load_simplified()
+
 assert len(walkParams.stateImportance) == robot.model.nv * 2
 
 # #####################################################################################
@@ -57,6 +65,8 @@ except (KeyError, FileNotFoundError):
 # #####################################################################################
 # ### VIZ #############################################################################
 # #####################################################################################
+
+
 try:
     import meshcat
     from pinocchio.visualize import MeshcatVisualizer
@@ -68,21 +78,21 @@ except (ImportError, AttributeError):
     print("No viewer")
 
 
-q0 = robot.x0[: robot.model.nq]
-print(
-    "Start from q0=",
-    "half_sitting"
-    if norm(q0 - robot.model.referenceConfigurations["half_sitting"]) < 1e-9
-    else q0,
-)
+q0 = robot.model.referenceConfigurations["half_sitting"]
+#print(
+#    "Start from q0=",
+#    "half_sitting"
+#    if norm(q0 - robot.model.referenceConfigurations["half_sitting"]) < 1e-9
+#    else q0,
+#)
 
 # #####################################################################################
 # ### DDP #############################################################################
 # #####################################################################################
 
-ddp = sobec.wwt.buildSolver(robot, contactPattern, walkParams)
+ddp = sobec.wwt.buildSolverActuation(robot, contactPattern, walkParams)
 problem = ddp.problem
-x0s, u0s = sobec.wwt.buildInitialGuess(ddp.problem, walkParams)
+x0s, u0s = sobec.wwt.buildInitialGuessActuation(ddp.problem, walkParams)
 ddp.setCallbacks([croc.CallbackVerbose(), croc.CallbackLogger()])
 
 with open("/tmp/virgile-repr.ascii", "w") as f:
@@ -90,7 +100,9 @@ with open("/tmp/virgile-repr.ascii", "w") as f:
     print("OCP described in /tmp/virgile-repr.ascii")
 
 croc.enable_profiler()
+print("start solving")
 ddp.solve(x0s, u0s, 200)
+print("solved")
 
 # assert sobec.logs.checkGitRefs(ddp.getCallbacks()[1], "refs/virgile-logs.npy")
 
@@ -98,7 +110,7 @@ ddp.solve(x0s, u0s, 200)
 # ### PLOT ######################################################################
 # ### PLOT ######################################################################
 
-sol = sobec.wwt.Solution(robot, ddp)
+sol = sobec.wwt.SolutionActuation(robot, ddp)
 
 plotter = sobec.wwt.plotter.WalkPlotter(robot.model, robot.contactIds)
 plotter.setData(contactPattern, sol.xs, sol.us, sol.fs0)

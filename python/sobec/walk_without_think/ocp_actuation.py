@@ -8,6 +8,8 @@ import numpy as np
 # Local imports
 import sobec
 from .weight_share import computeReferenceForces
+from .battobot_crocoddyl import BattobotActuationModelMatrix
+from .actuation_model import model, robot, battobotAct
 
 
 # workaround python 2
@@ -33,14 +35,9 @@ def buildRunningModels(robotWrapper, contactPattern, params):
 
         # Basics
         state = croc.StateMultibody(robot.model)
-        if robot.actuationModel is None:
-            actuation = croc.ActuationModelFloatingBase(state)
-        else:
-            from .actuation_matrix import ActuationModelMatrix
-            act_matrix = np.zeros((robot.model.nv, len(robot.actuationModel.mot_ids_v)))
-            for iu, iv in enumerate(robot.actuationModel.mot_ids_v):
-                act_matrix[iv, iu] = 1
-            actuation = ActuationModelMatrix(state, np.shape(act_matrix)[1], act_matrix)
+        
+        # Here we add the battobot actuation model
+        actuation = BattobotActuationModelMatrix(state, 12, battobotAct)
 
         # Contacts
         contacts = croc.ContactModelMultiple(state, actuation.nu)
@@ -232,6 +229,7 @@ def buildRunningModels(robotWrapper, contactPattern, params):
                     state, robot.x0, actuation.nu
                 )
                 jselec = np.zeros(robot.model.nv * 2)
+                #print(p.mainJointIds)
                 jselec[
                     [
                         robot.model.joints[robot.model.getJointId(name)].idx_v

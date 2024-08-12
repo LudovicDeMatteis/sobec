@@ -3,6 +3,15 @@ import numpy as np
 import sobec
 
 
+def load_3d(robot):
+    robot.q0 = np.array([0., 0., 0.55, 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+    robot.model.referenceConfigurations["half_sitting"] = robot.q0.copy()
+    newRobot = sobec.wwt.RobotWrapper(robot.model, contactKey="foot_frame")
+    newRobot.collision_model = robot.collision_model
+    newRobot.visual_model = robot.visual_model
+    assert len(newRobot.contactIds) == 2
+    return newRobot
+
 def load_simplified():
     urdffile = "robot.urdf"
     urdfpath = "examples/walk_without_think/model_robot_virgile/model_simplified"

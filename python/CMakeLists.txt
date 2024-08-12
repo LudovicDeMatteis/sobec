@@ -65,6 +65,10 @@ endforeach()
 set(${PY_WALK_NAME}_PYTHON
     __init__.py
     ocp.py
+    ocp_actuation.py
+    battobot_crocoddyl.py
+    actuation_model.py
+    battobot.py
     weight_share.py
     robot_wrapper.py
     config_mpc.py

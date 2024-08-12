@@ -54,6 +54,62 @@ class WalkForWanOCPParams(swparams.WalkParams):
     def __init__(self, name="talos_low"):
         swparams.WalkParams.__init__(self, name)
 
+
+class WalkBattobotParamsActuation(swparams.WalkParams):
+    '''
+    Specialization for Virgile proto with actuation model
+    '''
+    mainJointIds = [
+        'left_hip_z',
+        'left_hip_x',
+        'left_hip_y',
+        'left_free_knee',
+        'left_free_ankle_y',
+        'left_free_ankle_x',
+        'right_hip_z',
+        'right_hip_x',
+        'right_hip_y',
+        'right_free_knee',
+        'right_ankle_y',
+        'right_ankle_x',
+    ]
+
+    DT = 0.015
+    Tstart = int(0.3 / DT)
+    Tsingle = int(0.7 / DT)  # 60
+    Tdouble = roundToOdd(0.11 / DT)  # 11
+    Tend = int(0.3 / DT)
+    transitionDuration = (Tdouble - 1) // 2
+
+    vcomRef = np.r_[ 0.2, 0,0 ]
+    
+    centerOfFrictionWeight = 0
+    comWeight = 0
+    coneAxisWeight =  0.0002
+    conePenaltyWeight = 0
+    copWeight = 2
+    feetCollisionWeight = 0 # 1000
+    flyHighWeight =  200
+    groundColWeight = 200
+    impactAltitudeWeight = 20000
+    impactRotationWeight = 200
+    impactVelocityWeight = 10000
+    refForceWeight = 10
+    refMainJointsAtImpactWeight = 0
+    refStateWeight = 0.1
+    refTorqueWeight = 0
+    stateTerminalWeight = 1000 # 20
+    vcomWeight =  1
+    verticalFootVelWeight = 0 # 20
+
+    flyHighSlope = 3/2e-2
+    # TODO ?
+    # |
+    # |
+    # v
+    def __init__(self, model="simplified"):
+        swparams.WalkParams.__init__(self, "talos_legs")
+
 class WalkBattobotParams(swparams.WalkParams):
     '''
     Specialization for Virgile proto
