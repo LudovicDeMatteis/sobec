@@ -7,6 +7,7 @@ set(PROJECT_DESCRIPTION "Sandbox for optimal control explicitly for bipeds")
 set(PROJECT_URL https://github.com/${PROJECT_NAMESPACE}/${PROJECT_NAME})
 
 # Project options
+option(BUILD_BENCHMARK "Build the benchmark" OFF)
 option(BUILD_PYTHON_INTERFACE "Build the python binding" ON)
 option(BUILD_PY2CPP_INTERFACE "Build the py2cpp library" OFF)
 option(SUFFIX_SO_VERSION "Suffix library name with its version" ON)
@@ -172,7 +173,9 @@ if(BUILD_TESTING)
 endif()
 
 # Benchmark
-add_subdirectory(benchmark)
+if(BUILD_BENCHMARK)
+  add_subdirectory(benchmark)
+endif()
 
 # Installation
 install(
