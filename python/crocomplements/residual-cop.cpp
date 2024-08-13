@@ -25,11 +25,11 @@ void exposeResidualCenterOfPressure() {
 
   bp::class_<ResidualModelCenterOfPressure, bp::bases<ResidualModelAbstract> >(
       "ResidualModelCenterOfPressure",
-      bp::init<boost::shared_ptr<StateMultibody>, pinocchio::FrameIndex,
-               std::size_t>(bp::args("self", "state", "contact_id", "nu"),
+      bp::init<boost::shared_ptr<StateMultibody>, std::string,
+               std::size_t>(bp::args("self", "state", "contact_name", "nu"),
                             "Initialize the residual model r(x,u)=cop.\n\n"
                             ":param state: state of the multibody system\n"
-                            ":param contact_id: reference contact frame\n"
+                            ":param contact_name: name of the contact model\n"
                             ":param nu: dimension of control vector"))
       .def<void (ResidualModelCenterOfPressure::*)(
           const boost::shared_ptr<ResidualDataAbstract>&,
@@ -68,8 +68,8 @@ void exposeResidualCenterOfPressure() {
            ":param data: shared data\n"
            ":return residual data.")
       .add_property(
-          "contact_id", &ResidualModelCenterOfPressure::get_contact_id,
-          &ResidualModelCenterOfPressure::set_contact_id, "Contact frame ID");
+          "contact_name", &ResidualModelCenterOfPressure::get_name,
+          &ResidualModelCenterOfPressure::set_name, "Contact Model name");
 
   bp::register_ptr_to_python<
       boost::shared_ptr<ResidualDataCenterOfPressure> >();

@@ -20,8 +20,8 @@ using namespace crocoddyl;
 template <typename Scalar>
 ResidualModelCenterOfPressureTpl<Scalar>::ResidualModelCenterOfPressureTpl(
     boost::shared_ptr<StateMultibody> state,
-    const pinocchio::FrameIndex contact_id, const std::size_t nu)
-    : Base(state, 2, nu, true, true, true), contact_id_(contact_id) {}
+    const std::string contact_name, const std::size_t nu)
+    : Base(state, 2, nu, true, true, true), contact_name_(contact_name) {}
 
 template <typename Scalar>
 ResidualModelCenterOfPressureTpl<Scalar>::~ResidualModelCenterOfPressureTpl() {}
@@ -32,8 +32,8 @@ void ResidualModelCenterOfPressureTpl<Scalar>::calc(
     const Eigen::Ref<const VectorXs> & /*x*/,
     const Eigen::Ref<const VectorXs> &) {
   Data *d = static_cast<Data *>(data.get());
-  //Force f = d->contact->jMf.actInv(d->contact->f);
-  const Force & f = d->contact->f;
+  const Force f = d->contact->jMf.actInv(d->contact->f);
+  // const Force & f = d->contact->f;
 
   if (f.linear()[2] != 0.0) {
     data->r[0] = f.angular()[1] / f.linear()[2];
@@ -49,10 +49,9 @@ void ResidualModelCenterOfPressureTpl<Scalar>::calcDiff(
     const boost::shared_ptr<ResidualDataAbstract> &data,
     const Eigen::Ref<const VectorXs> &, const Eigen::Ref<const VectorXs> &) {
   Data *d = static_cast<Data *>(data.get());
-  //Force f = d->contact->jMf.actInv(d->contact->f); // LOCAL (but then derivatives are wrong
-  const Force & f = d->contact->f;
-  const MatrixXs &df_dx = d->contact->df_dx;
-  const MatrixXs &df_du = d->contact->df_du;
+  Force f = d->contact->jMf.actInv(d->contact->f); // LOCAL // TODO check if the derivatives are correct
+  const MatrixXs &df_dx = d->contact->jMf.toActionMatrix() * d->contact->df_dx;
+  const MatrixXs &df_du = d->contact->jMf.toActionMatrix() * d->contact->df_du;
 
   // r = tau/f
   // r'= tau'/f - tau/f^2 f' = (tau'-cop.f')/f

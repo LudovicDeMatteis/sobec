@@ -68,6 +68,7 @@ set(${PROJECT_NAME}_HEADERS
     include/${PROJECT_NAME}/fwd.hpp
     include/${PROJECT_NAME}/crocomplements/residual-com-velocity.hpp
     include/${PROJECT_NAME}/crocomplements/residual-cop.hpp
+    include/${PROJECT_NAME}/crocomplements/residual-center-of-friction.hpp
     include/${PROJECT_NAME}/crocomplements/residual-feet-collision.hpp
     include/${PROJECT_NAME}/crocomplements/residual-vel-collision.hpp
     include/${PROJECT_NAME}/crocomplements/residual-fly-high.hpp
@@ -88,6 +89,7 @@ set(${PROJECT_NAME}_HEADERS
     # include/${PROJECT_NAME}/crocomplements/contact/contact-force.hpp
     include/${PROJECT_NAME}/crocomplements/residual-com-velocity.hxx
     include/${PROJECT_NAME}/crocomplements/residual-cop.hxx
+    include/${PROJECT_NAME}/crocomplements/residual-center-of-friction.hxx
     include/${PROJECT_NAME}/crocomplements/residual-feet-collision.hxx
     include/${PROJECT_NAME}/crocomplements/residual-vel-collision.hxx
     # include/${PROJECT_NAME}/crocomplements/contact/contact6d.hxx

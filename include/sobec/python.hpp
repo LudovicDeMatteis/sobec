@@ -11,22 +11,23 @@ void exposeStdContainers();
 void exposeResidualCoMVelocity();
 void exposeResidualVelCollision();
 void exposeResidualCenterOfPressure();
+void exposeResidualCenterOfFriction();
 void exposeResidualFeetCollision();
 void exposeResidualFlyHigh();
 void exposeResidualFlyAngle();
 void exposeResidualDCMPosition();
 void exposeResidual2DSurface();
 void exposeActivationQuadRef();
-void exposeDesigner();
-void exposeHorizonManager();
-void exposeModelFactory();
+// void exposeDesigner();
+// void exposeHorizonManager();
+// void exposeModelFactory();
 void exposeIntegratedActionLPF();
 void exposeStateLPF();
 void exposeDAMContactFwdDyn();
 void exposeResidualContactForce();
-void exposeWBC();
-void exposeWBCHorizon();
-void exposeFootTrajectory();
+// void exposeWBC();
+// void exposeWBCHorizon();
+// void exposeFootTrajectory();
 void exposeFlex();
 void exposeOCPWalk();
 void exposeMPCWalk();
@@ -38,12 +39,12 @@ namespace sobec {
 namespace newcontacts {
 namespace python {
 
-void exposeResidualContactForce();
-void exposeDAMContactFwdDyn();
-void exposeContact6D();
-void exposeContact3D();
-void exposeContact1D();
-void exposeMultipleContacts();
+// void exposeResidualContactForce();
+// void exposeDAMContactFwdDyn();
+// void exposeContact6D();
+// void exposeContact3D();
+// void exposeContact1D();
+// void exposeMultipleContacts();
 
 }  // namespace python
 }  // namespace newcontacts

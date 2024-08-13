@@ -9,13 +9,17 @@
 #ifndef SOBEC_RESIDUAL_COP_HPP_
 #define SOBEC_RESIDUAL_COP_HPP_
 
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <crocoddyl/core/residual-base.hpp>
+#include <crocoddyl/core/utils/deprecate.hpp>
 #include <crocoddyl/core/utils/exception.hpp>
 #include <crocoddyl/multibody/data/multibody.hpp>
 #include <crocoddyl/multibody/fwd.hpp>
 #include <crocoddyl/multibody/states/multibody.hpp>
 #include <pinocchio/algorithm/jacobian.hpp>
 #include <pinocchio/multibody/fwd.hpp>
+#include <pinocchio/multibody/joint/joint-generic.hpp>
+#include <pinocchio/spatial/fwd.hpp>
 #include <pinocchio/spatial/motion.hpp>
 
 #include "crocoddyl/multibody/contacts/contact-pin.hpp"
@@ -60,15 +64,12 @@ class ResidualModelCenterOfPressureTpl
    * @brief Initialize the residual model
    *
    * @param[in] state       State of the multibody system
-   * @param[in] nu          Dimension of the control vector
-   * @param[in] geom_model  Pinocchio geometry model containing the collision
-   * pair
-   * @param[in] pair_id     Index of the collision pair in the geometry model
-   * @param[in] joint_id    Index of the nearest joint on which the collision
+   * @param[in] contact_name Name of the contact
+   * @param[in] nu          Dimension of control vector
    * link is attached
    */
   ResidualModelCenterOfPressureTpl(boost::shared_ptr<StateMultibody> state,
-                                   const pinocchio::FrameIndex contact_id,
+                                   const std::string contact_name,
                                    const std::size_t nu);
 
   virtual ~ResidualModelCenterOfPressureTpl();
@@ -99,11 +100,14 @@ class ResidualModelCenterOfPressureTpl
       DataCollectorAbstract *const data);
 
   /**
-   * @brief Return the reference contact id
+   * @brief Return the reference contact name
    */
-  pinocchio::FrameIndex get_contact_id() const { return contact_id_; }
-  /** @brief Set the reference contact id. */
-  void set_contact_id(const pinocchio::FrameIndex id) { contact_id_ = id; }
+  std::string get_name() const { return contact_name_; }
+  
+  /** @brief Set the reference contact name */
+  DEPRECATED("Do not use set_name, instead create a new residual model", 
+              void set_name(const std::string id) { contact_name_ = id; }
+  )
 
  protected:
   using Base::nu_;
@@ -111,7 +115,7 @@ class ResidualModelCenterOfPressureTpl
   using Base::unone_;
 
  private:
-  pinocchio::FrameIndex contact_id_;
+  std::string contact_name_;
 };
 
 template <typename _Scalar>
@@ -139,23 +143,29 @@ struct ResidualDataCenterOfPressureTpl
           "Invalid argument: the shared data should be derived from "
           "DataCollectorContact");
     }
-    const pinocchio::FrameIndex id = model->get_contact_id();
+    const std::string name = model->get_name();
     const boost::shared_ptr<StateMultibody> &state =
         boost::static_pointer_cast<StateMultibody>(model->get_state());
-    std::string frame_name = state->get_pinocchio()->frames[id].name;
+
     bool found_contact = false;
     for (auto &it : d->contacts->contacts) {
-      if (it.second->frame == id) {
-        ContactDataTpl<Scalar> *d6d =
+      if (it.first == name) {
+        ContactDataTpl<Scalar> *contactData =
             dynamic_cast<ContactDataTpl<Scalar> *>(it.second.get());
-        if (d6d != NULL) {
+        if (contactData != NULL) {
+          if (contactData->type != pinocchio::ContactType::CONTACT_6D) {
+            throw_pretty(
+                "Domain error: contact should be 6d for COP with name " + name);
+          }
           found_contact = true;
           this->contact = it.second;
+          this->jMf = boost::allocate_shared<pinocchio::SE3Tpl<Scalar>>(
+              Eigen::aligned_allocator<pinocchio::SE3Tpl<Scalar>>(), it.second->jMf);
           break;
         }
         throw_pretty(
-            "Domain error: there isn't defined at least a 6d contact for " +
-            frame_name);
+            "Domain error: there isn't defined at least a 6d contact with name " +
+            name);
 
         // The frame of contact should be asserted!
         // if (this->contact->get_type()!=pinocchio::WORLD)
@@ -166,11 +176,12 @@ struct ResidualDataCenterOfPressureTpl
       }
     }
     if (!found_contact) {
-      throw_pretty("Domain error: there isn't defined contact data for " +
-                   frame_name);
+      throw_pretty("Domain error: there isn't defined contact data with first joint being " +
+                   name);
     }
   }
   boost::shared_ptr<ForceDataAbstractTpl<Scalar> > contact;
+  boost::shared_ptr<pinocchio::SE3Tpl<Scalar> > jMf; // Placement of the contact frame with respect to the reference joint
   using Base::r;
   using Base::Ru;
   using Base::Rx;

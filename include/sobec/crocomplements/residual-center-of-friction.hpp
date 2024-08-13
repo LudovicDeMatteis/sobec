@@ -142,28 +142,36 @@ struct ResidualDataCenterOfFrictionTpl
     const pinocchio::FrameIndex id = model->get_contact_id();
     const boost::shared_ptr<StateMultibody> &state =
         boost::static_pointer_cast<StateMultibody>(model->get_state());
-    std::string frame_name = state->get_pinocchio()->frames[id].name;
+    std::string joint_name = state->get_pinocchio()->names[id];
+
     bool found_contact = false;
     for (auto &it : d->contacts->contacts) {
-      if (it.second->frame == id) {
-        ContactDataTpl<Scalar> *d6d =
+      if (it.second->jId == id) {
+        ContactDataTpl<Scalar> *contactData =
             dynamic_cast<ContactDataTpl<Scalar> *>(it.second.get());
-        if (d6d != NULL) {
+        if (contactData != NULL) {
+          if (contactData->type != pinocchio::ContactType::CONTACT_6D) {
+            throw_pretty(
+                "Domain error: the contact type should be 6d for " + joint_name);
+          }
           found_contact = true;
           this->contact = it.second;
+          this->jMf = boost::allocate_shared<pinocchio::SE3Tpl<Scalar>>(
+              Eigen::aligned_allocator<pinocchio::SE3Tpl<Scalar>>(), it.second->jMf);
           break;
         }
         throw_pretty(
             "Domain error: there isn't defined at least a 6d contact for " +
-            frame_name);
+            joint_name);
       }
     }
     if (!found_contact) {
       throw_pretty("Domain error: there isn't defined contact data for " +
-                   frame_name);
+                   joint_name);
     }
   }
   boost::shared_ptr<ForceDataAbstractTpl<Scalar> > contact;
+  boost::shared_ptr<pinocchio::SE3Tpl<Scalar> > jMf;
   using Base::r;
   using Base::Ru;
   using Base::Rx;
