@@ -150,3 +150,15 @@ while input("Press q to quit the visualisation") != "q":
 # import imageio # pip install imageio[ffmpeg]
 # imageio.mimsave("/tmp/battobot.mp4", imgs, 1//walkParams.DT)
 
+# Save controls in external file
+np.save("xs.npy",ddp.xs)
+np.save("us.npy",ddp.us)
+
+
+def play(createBarsVisuals=False):
+    for x in ddp.xs:
+        # print(len(x))
+        #viz.display(x[: model.nq])
+        x = x[: model.nq]
+        dispWithBars(x[: model.nq],viz,createBarsVisuals=createBarsVisuals)
+        # sleep(dt)
