@@ -256,6 +256,8 @@ class WalkPlotter:
         plt.subplot(414)
         plt.plot(vcomplot[:, 2])
         plt.ylabel("vel z")
+        plt.suptitle("COM velocity")
+        plt.tight_layout()
 
     def plotFeet(self):
         # Foot position and velocity
