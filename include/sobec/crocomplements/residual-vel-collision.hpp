@@ -21,6 +21,7 @@
 #include <pinocchio/multibody/fwd.hpp>
 #include <pinocchio/multibody/geometry.hpp>
 #include <pinocchio/spatial/motion.hpp>
+#include <pinocchio/collision/distance.hpp>
 
 #include "sobec/fwd.hpp"
 

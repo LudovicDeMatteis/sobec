@@ -11,6 +11,8 @@
 #include "sobec/crocomplements/residual-fly-high.hpp"
 #include "sobec/walk-without-think/ocp.hpp"
 
+#define CNAME(cid) robot->model->frames[cid].name + "_contact"
+#define LNAME(cid) robot->model->names[cid] + "_loop_contact"
 namespace sobec {
 
 std::vector<AMA> OCPWalk::buildRunningModels() {
@@ -29,7 +31,7 @@ std::vector<AMA> OCPWalk::buildRunningModels() {
       int cid = robot->contactIds[k];
       auto contact = boost::make_shared<crocoddyl::ContactModel>(
           state, pinocchio::ContactType::CONTACT_6D, cid, pinocchio::SE3::Identity(), pinocchio::ReferenceFrame::WORLD, actuation->get_nu());
-      contacts->addContact(robot->model->frames[cid].name + "_contact",
+      contacts->addContact(CNAME(cid),
                            contact);
     // TODO Add closed loop contacts
     }
@@ -81,13 +83,13 @@ std::vector<AMA> OCPWalk::buildRunningModels() {
     {
       if (contact_pattern(k, i) == 0.) continue;
 
-      int cid = robot->contactIds[k];
+      unsigned long cid = robot->contactIds[k];
 
       Eigen::Vector2d w_cop;
       double value = 1.0 / (params->footSize * params->footSize);
       w_cop << value, value;
       auto copResidual = boost::make_shared<ResidualModelCenterOfPressure>(
-          state, cid, actuation->get_nu());
+          state, CNAME(cid), actuation->get_nu());
       auto copAct = boost::make_shared<ActivationModelWeightedQuad>(w_cop);
       auto copCost =
           boost::make_shared<CostModelResidual>(state, copAct, copResidual);
@@ -129,7 +131,7 @@ std::vector<AMA> OCPWalk::buildRunningModels() {
       // formulation.
       auto coneAxisResidual =
           boost::make_shared<crocoddyl::ResidualModelContactForce>(
-              state, cid, pinocchio::Force::Zero(), 6, actuation->get_nu());
+              state, CNAME(cid), pinocchio::Force::Zero(), 6, actuation->get_nu());
       Eigen::VectorXd w =
           params->forceImportance.cwiseProduct(params->forceImportance);
       w[2] = 0.0;
@@ -143,7 +145,7 @@ std::vector<AMA> OCPWalk::buildRunningModels() {
       // # Follow reference (smooth) contact forces
       auto forceRefResidual =
           boost::make_shared<crocoddyl::ResidualModelContactForce>(
-              state, cid, pinocchio::Force(referenceForces[i][k]), 6,
+              state, CNAME(cid), pinocchio::Force(referenceForces[i][k]), 6,
               actuation->get_nu());
       auto forceRefCost =
           boost::make_shared<CostModelResidual>(state, forceRefResidual);

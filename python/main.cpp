@@ -11,7 +11,7 @@ BOOST_PYTHON_MODULE(sobec_pywrap) {
   eigenpy::enableEigenPy();
   eigenpy::enableEigenPySpecific<Eigen::VectorXi>();
   sobec::python::exposeStdContainers();
-  sobec::python::exposeResidualVelCollision();
+  // sobec::python::exposeResidualVelCollision();
   sobec::python::exposeResidualCoMVelocity();
   sobec::python::exposeResidualCenterOfPressure();
   sobec::python::exposeResidualCenterOfFriction();

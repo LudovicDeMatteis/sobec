@@ -43,7 +43,7 @@ void ResidualModelCoMVelocityTpl<Scalar>::calc(
   const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> v =
       x.tail(state_->get_nv());
 
-  pinocchio::centerOfMass(pin_model_, *d->pinocchio, q, v);
+  // pinocchio::centerOfMass(pin_model_, *d->pinocchio, q, v);
   data->r = d->pinocchio->vcom[0] - vref_;
 }
 
@@ -59,6 +59,7 @@ void ResidualModelCoMVelocityTpl<Scalar>::calcDiff(
 
   const std::size_t nv = state_->get_nv();
 
+  // pinocchio::centerOfMass(pin_model_, d->pinocchio, q, v);
   pinocchio::getCenterOfMassVelocityDerivatives(pin_model_, *d->pinocchio,
                                                 d->dvcom_dq);
   data->Rx.leftCols(nv) = d->dvcom_dq;

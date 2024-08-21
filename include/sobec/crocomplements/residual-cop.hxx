@@ -32,8 +32,8 @@ void ResidualModelCenterOfPressureTpl<Scalar>::calc(
     const Eigen::Ref<const VectorXs> & /*x*/,
     const Eigen::Ref<const VectorXs> &) {
   Data *d = static_cast<Data *>(data.get());
-  const Force f = d->contact->jMf.actInv(d->contact->f);
-  // const Force & f = d->contact->f;
+  // const Force f = d->contact->jMf.actInv(d->contact->f);
+  const Force & f = d->contact->fext;
 
   if (f.linear()[2] != 0.0) {
     data->r[0] = f.angular()[1] / f.linear()[2];
@@ -49,9 +49,12 @@ void ResidualModelCenterOfPressureTpl<Scalar>::calcDiff(
     const boost::shared_ptr<ResidualDataAbstract> &data,
     const Eigen::Ref<const VectorXs> &, const Eigen::Ref<const VectorXs> &) {
   Data *d = static_cast<Data *>(data.get());
-  Force f = d->contact->jMf.actInv(d->contact->f); // LOCAL // TODO check if the derivatives are correct
-  const MatrixXs &df_dx = d->contact->jMf.toActionMatrix() * d->contact->df_dx;
-  const MatrixXs &df_du = d->contact->jMf.toActionMatrix() * d->contact->df_du;
+  // Force f = d->contact->jMf.actInv(d->contact->f); // Force expressed in the contact point frame
+  Force f = d->contact->fext; // Force expressed in the joint frame
+  // const MatrixXs &df_dx = d->contact->jMf.inverse().toActionMatrix() * d->contact->df_dx;
+  // const MatrixXs &df_du = d->contact->jMf.inverse().toActionMatrix() * d->contact->df_du;
+  const MatrixXs &df_dx = d->contact->df_dx;
+  const MatrixXs &df_du = d->contact->df_du;
 
   // r = tau/f
   // r'= tau'/f - tau/f^2 f' = (tau'-cop.f')/f
