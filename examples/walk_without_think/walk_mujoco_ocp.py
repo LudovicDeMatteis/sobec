@@ -113,7 +113,7 @@ def pinToMujocoJointOrder(
             mjActuatorFilter[j:j+mjJoints_nq[i]] = 1
 
 
-    print(q_mujoco)
+    #print(q_mujoco)
 
     return (q_mujoco, mjJointIds, mjJointIdx_q, mjJoints_nq, mjActuatorFilter, mjJointNames)
 
@@ -124,6 +124,9 @@ q0mj, mjJointIds, mjJointIdx_q, mjJoints_nq, mjActuatorFilter, mjJointNames = pi
 
 
 def turnToStr(q):
+    """
+    Convert configuration to a string that can be used as a mujoco keyframe.
+    """
     outStr = ""
     for q_i in q:
         if q_i < 1e-8:
@@ -146,9 +149,6 @@ def id_q_is_joint(i, mjJointIdx_q, mjJoints_nq, mjJointNames, jointName):
 
 Kp = 90*np.ones(12)
 Kd = 3*np.ones(12)
-
-
-
 
 xs = np.load(
     "/home/vlutz/Documents/sobec_install_sobec4_env/sobec_fork_ludovic/sobec/examples/walk_without_think/xs.npy"

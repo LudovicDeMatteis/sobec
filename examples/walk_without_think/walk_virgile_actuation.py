@@ -25,6 +25,7 @@ from sobec.walk_without_think.actuation_model import robot as battobotRobot
 # Adapted from loader virgile
 from loaders_virgile import load_3d
 
+# This robot is already freezed inside the actuation model script
 robot = load_3d(battobotRobot)
 
 walkParams = specific_params.WalkBattobotParamsActuation()
