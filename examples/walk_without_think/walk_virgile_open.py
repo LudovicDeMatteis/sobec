@@ -84,7 +84,7 @@ print(
 ddp = sobec.wwt.buildSolver(robot, contactPattern, walkParams, solver='FDDP')
 problem = ddp.problem
 x0s, u0s = sobec.wwt.buildInitialGuess(ddp.problem, walkParams)
-ddp.setCallbacks([croc.CallbackVerbose(), croc.CallbackLogger()])
+ddp.setCallbacks([croc.CallbackVerbose(), croc.CallbackLogger(), sobec.CallbackNumDiff()])
 
 with open("/tmp/virgile-repr.ascii", "w") as f:
     f.write(sobec.reprProblem(ddp.problem))
@@ -99,56 +99,6 @@ ddp.solve(x0s, u0s, 200)
 # ### PLOT ######################################################################
 
 sol = sobec.wwt.Solution(robot, ddp)
-
-### VERIFY COSTS VALUES AND DERIVATIVES ########################################
-for cost_name in ddp.problem.runningModels[0].differential.costs.costs.todict().keys():
-    for t in [0, 10, 20, 30, 40, 50]:
-        if cost_name not in ddp.problem.runningModels[t].differential.costs.costs.todict().keys():
-            continue
-        x = np.array(sol.xs.tolist())[t]
-        q = x[:robot.model.nq]
-        v = x[robot.model.nq :]
-        u = np.array(sol.us.tolist())[t]
-        dam = ddp.problem.runningModels[t].differential
-        dam_data = dam.createData()
-        dam.calc(dam_data, x, u)
-        dam.calcDiff(dam_data, x, u)
-
-        # r0 = dam_data.xout.copy() #
-        r0 = dam_data.costs.costs.todict()[cost_name].residual.r.copy()
-        Rx_gt = dam_data.costs.costs.todict()[cost_name].residual.Rx
-        Ru_gt = dam_data.costs.costs.todict()[cost_name].residual.Ru
-
-        Rx_fd = np.empty((r0.size, v.size * 2))
-        Ru_fd = np.empty((r0.size, u.size))
-        eps = 1e-8
-        q_eps = np.zeros(v.size)
-        for i in range(v.size):
-            q_eps[i] += eps
-            q1 = pin.integrate(robot.model, q, q_eps)
-            x1 = np.concatenate([q1, v])
-            dam.calc(dam_data, x1, u)
-            r1 = dam_data.costs.costs.todict()[cost_name].residual.r.copy()
-            Rx_fd[:, i] = (r1 - r0) / eps
-            q_eps[i] -= eps
-        v1 = v.copy()
-        for i in range(v.size):
-            v1[i] += eps
-            x1 = np.concatenate([q, v1])
-            dam.calc(dam_data, x1, u)
-            r1 = dam_data.costs.costs.todict()[cost_name].residual.r
-            Rx_fd[:, i + v.size] = (r1 - r0) / eps
-            v1[i] -= eps
-        u1 = u.copy()
-        for i in range(u.size):
-            u1[i] += eps
-            dam.calc(dam_data, x, u1)
-            r1 = dam_data.costs.costs.todict()[cost_name].residual.r
-            Ru_fd[:, i] = (r1 - r0) / eps
-            u1[i] -= eps
-        np.testing.assert_allclose(Rx_fd, Rx_gt, atol=2*np.sqrt(eps))
-        np.testing.assert_allclose(Ru_fd, Ru_gt, atol=2*np.sqrt(eps))
-        print(f"t={t}", "OK for", cost_name)
 
 plotter = sobec.wwt.plotter.WalkPlotter(robot.model, robot.contactIds)
 plotter.setData(contactPattern, sol.xs, sol.us, sol.fs0)
