@@ -4,25 +4,25 @@ import sobec
 
 Q0_SHARED = np.array(
     [
-        0.022858,
+        0.01278,
         -0.000194,
-        0.633254,
-        -0.0,
+        0.586692,
         0.0,
+        -0.0,
         0.0,
         1.0,
         -0.0,
-        -0.000251,
-        0.140753,
-        0.081848,
-        -0.058906,
-        0.000251,
+        -0.000281,
+        -0.219024,
+        -0.46888,
+        -0.249856,
+        0.000281,
         0.0,
-        -0.000251,
-        -0.141202,
-        -0.082813,
-        0.058389,
-        0.000251,
+        -0.00028,
+        0.220722,
+        0.471723,
+        0.251,
+        0.00028,
     ]
 )
 
@@ -246,102 +246,6 @@ def load_complete_closed_6d(export_joints_ids=False):
         return robot
 
 
-def load_complete_closed_3d(export_joints_ids=False):
-    try:
-        from example_parallel_robots.loader_tools import completeRobotLoader
-        from toolbox_parallel_robots.freeze_joints import freezeJoints
-        from toolbox_parallel_robots.projections import configurationProjection
-    except ImportError:
-        print(
-            "Please install the `toolbox_parallel_robots` and `example_parallel_robots` packages to run this model"
-        )
-        return
-    urdffile = "robot.urdf"
-    yamlfile = "robot.yaml"
-    urdfpath = "examples/walk_without_think/model_robot_virgile/model_3d"
-    (
-        model,
-        robot_constraint_models,
-        actuation_model,
-        visual_model,
-        collision_model,
-    ) = completeRobotLoader(urdfpath, urdffile, yamlfile, freeflyer=True)
-
-    joints_lock_names = [
-        # Right
-        "left_spherical_foot_1",
-        "left_spherical_foot_2",
-        "free_knee_left_Y",
-        "free_knee_left_Z",
-        "motor_ankle1_left",
-        "left_spherical_ankle_1_Y",
-        "left_spherical_ankle_1_Z",
-        "motor_ankle2_left",
-        "left_spherical_ankle_2_Y",
-        "left_spherical_ankle_2_Z",
-        "motor_knee_left",
-        "transmission_knee_left",
-        # Right
-        "right_spherical_foot_1",
-        "right_spherical_foot_2",
-        "free_knee_right_Y",
-        "free_knee_right_Z",
-        "motor_ankle1_right",
-        "right_spherical_ankle_1_Y",
-        "right_spherical_ankle_1_Z",
-        "motor_ankle2_right",
-        "right_spherical_ankle_2_Y",
-        "right_spherical_ankle_2_Z",
-        "motor_knee_right",
-        "transmission_knee_right",
-    ]
-
-    LOOP_JOINT_IDS_Q = []
-    LOOP_JOINT_IDS_V = []
-    for i, name in enumerate(joints_lock_names):
-        jId = model.getJointId(name)
-        for niq in range(model.joints[jId].nq):
-            LOOP_JOINT_IDS_Q.append(model.joints[jId].idx_q + niq)
-        for niv in range(model.joints[jId].nv):
-            LOOP_JOINT_IDS_V.append(model.joints[jId].idx_v + niv)
-    SERIAL_JOINT_IDS_Q = [i for i in range(model.nq) if i not in LOOP_JOINT_IDS_Q]
-    SERIAL_JOINT_IDS_V = [i for i in range(model.nv) if i not in LOOP_JOINT_IDS_V]
-
-    q_ref = pin.neutral(model)
-    q_ref[SERIAL_JOINT_IDS_Q] = Q0_SHARED
-    robot_constraint_datas = [cm.createData() for cm in robot_constraint_models]
-    w = np.ones(model.nv)
-    w[SERIAL_JOINT_IDS_V] = 1e5
-    W = np.diag(w)
-    q0 = configurationProjection(
-        model,
-        model.createData(),
-        robot_constraint_models,
-        robot_constraint_datas,
-        q_ref,
-        W,
-    )
-
-    model.referenceConfigurations["half_sitting"] = q0
-
-    model.frames[14].name = "foot_frame_right"
-    model.frames[58].name = "foot_frame_left"
-    robot = sobec.wwt.RobotWrapper(model, contactKey="foot_frame", closed_loop=True)
-    robot.collision_model = collision_model
-    robot.visual_model = visual_model
-    robot.actuationModel = actuation_model
-    robot.loop_constraints_models = robot_constraint_models
-    assert len(robot.contactIds) == 2
-    if export_joints_ids:
-        return robot, (
-            SERIAL_JOINT_IDS_Q,
-            SERIAL_JOINT_IDS_V,
-            LOOP_JOINT_IDS_Q,
-            LOOP_JOINT_IDS_V,
-        )
-    else:
-        return robot
-
 
 def load_kangaroo():
     try:
@@ -374,6 +278,3 @@ def load_kangaroo():
     viz.display(q0)
     print("Start from q0=", q0)
     return model
-
-
-# load_kangaroo()
