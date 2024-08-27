@@ -25,6 +25,7 @@ walkParams = specific_params.WalkBattobotParams(model="closed")
 walkParams.saveFile = "/tmp/walk_virgile_closed.npy"
 if WS:
     walkParams.guessFile = "/tmp/walk_virgile_closed_ws.npy"
+    walkParams.saveFile = "/tmp/walk_virgile_closed_warmstarted.npy"
 # #####################################################################################
 # ### LOAD ROBOT ######################################################################
 # #####################################################################################
@@ -124,8 +125,9 @@ plotter.plotForces(forceRef)
 plotter.plotCom(robot.com0)
 plotter.plotFeet()
 plotter.plotFootCollision(walkParams.footMinimalDistance)
+plotter.plotJointTorques()
 print("Run ```plt.ion(); plt.show()``` to display the plots.")
-# plt.ion()
+plt.ion()
 # plt.show()
 
 costPlotter = sobec.wwt.plotter.CostPlotter(robot.model, ddp)
@@ -133,15 +135,15 @@ costPlotter.setData()
 costPlotter.plotCosts()
 plt.show()
 
-from matplotlib.backends.backend_pdf import PdfPages
-def multipage(filename, figs=None, dpi=200):
-    pp = PdfPages(filename)
-    if figs is None:
-        figs = [plt.figure(n) for n in plt.get_fignums()]
-    for fig in figs:
-        fig.savefig(pp, format='pdf')
-    pp.close()
-multipage("figs.pdf", [plt.figure(i) for i in plt.get_fignums()])
+# from matplotlib.backends.backend_pdf import PdfPages
+# def multipage(filename, figs=None, dpi=200):
+#     pp = PdfPages(filename)
+#     if figs is None:
+#         figs = [plt.figure(n) for n in plt.get_fignums()]
+#     for fig in figs:
+#         fig.savefig(pp, format='pdf')
+#     pp.close()
+# multipage("figs.pdf", [plt.figure(i) for i in plt.get_fignums()])
 
 # ## DEBUG ######################################################################
 # ## DEBUG ######################################################################
