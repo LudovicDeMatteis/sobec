@@ -1,6 +1,8 @@
 # flake8: noqa
 from . import ocp, weight_share, robot_wrapper, config_mpc, save_traj, actuation_matrix, jump_ocp
 from . import miscdisp, params, yaml_params
+#from . import actuation_model, battobot_crocoddyl, instanciate_battobot_actuation
+
 
 from .ocp import Solution, buildSolver, buildInitialGuess
 from .jump_ocp import Solution as JumpSolution, buildSolver as buildJumpSolver, buildInitialGuess as buildJumpInitialGuess 
@@ -11,6 +13,9 @@ from .miscdisp import CallbackMPCWalk, dispocp
 from .yaml_params import yamlReadToParams, yamlWriteParams
 from .save_traj import save_traj, loadProblemConfig, saveProblemConfig, load_traj
 from .actuation_matrix import ActuationModelMatrix
+from .actuation_model import *
+from .battobot_crocoddyl import ActuationModelMatrix as ActuationModelMatrixJa
+from .instanciate_battobot_actuation import *
 
 # Don't include plotter by default, it breaks bullet
 # from . import plotter

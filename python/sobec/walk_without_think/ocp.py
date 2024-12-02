@@ -27,20 +27,40 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
     )
     models = []
 
+    hasConstraints = False
+
     # #################################################################################
     for t, pattern in enumerate(contactPattern[:-1]):
         # print("time t=%s %s" % (t, pattern))
 
         # Basics
         state = croc.StateMultibody(robot.model)
-        if robot.actuationModel is None:
-            actuation = croc.ActuationModelFloatingBase(state)
-        else:
-            from .actuation_matrix import ActuationModelMatrix
-            act_matrix = np.zeros((robot.model.nv, len(robot.actuationModel.mot_ids_v)))
-            for iu, iv in enumerate(robot.actuationModel.mot_ids_v):
-                act_matrix[iv, iu] = 1
-            actuation = ActuationModelMatrix(state, np.shape(act_matrix)[1], act_matrix)
+
+        # Should be retrocompatible with Ludovic's case
+        try:
+            if robot.useActuationJacobian:
+                from .battobot_crocoddyl import (
+                    ActuationModelMatrix as ActuationModelMatrixJa,
+                )
+
+                actuation = ActuationModelMatrixJa(state, 12, robot.battobotAct)
+
+        except:
+            if robot.actuationModel is None:
+                actuation = croc.ActuationModelFloatingBase(state)
+            else:
+                # Ludovic's case
+                hasConstraints = True
+                from .actuation_matrix import ActuationModelMatrix
+
+                act_matrix = np.zeros(
+                    (robot.model.nv, len(robot.actuationModel.mot_ids_v))
+                )
+                for iu, iv in enumerate(robot.actuationModel.mot_ids_v):
+                    act_matrix[iv, iu] = 1
+                actuation = ActuationModelMatrix(
+                    state, np.shape(act_matrix)[1], act_matrix
+                )
 
         # Contacts
         contacts = croc.ContactModelMultiple(state, actuation.nu)
@@ -51,19 +71,24 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                 state, cid, pin.SE3.Identity(), pin.WORLD, actuation.nu, p.baumgartGains
             )
             contacts.addContact(robot.model.frames[cid].name + "_contact", contact)
-        for k, cm in enumerate(robot.loop_constraints_models):
-            assert cm.type == pin.ContactType.CONTACT_6D and cm.reference_frame == pin.ReferenceFrame.LOCAL
-            contact = croc.ContactModel6DLoop(
-                state,
-                cm.joint1_id,
-                cm.joint1_placement,
-                cm.joint2_id,
-                cm.joint2_placement,
-                pin.ReferenceFrame.LOCAL,
-                actuation.nu,
-                np.array([cm.corrector.Kp[0], cm.corrector.Kd[0]])
-            )
-            contacts.addContact(f"loop_contact_{k}", contact)
+
+        if hasConstraints:
+            for k, cm in enumerate(robot.loop_constraints_models):
+                assert (
+                    cm.type == pin.ContactType.CONTACT_6D
+                    and cm.reference_frame == pin.ReferenceFrame.LOCAL
+                )
+                contact = croc.ContactModel6DLoop(
+                    state,
+                    cm.joint1_id,
+                    cm.joint1_placement,
+                    cm.joint2_id,
+                    cm.joint2_placement,
+                    pin.ReferenceFrame.LOCAL,
+                    actuation.nu,
+                    np.array([cm.corrector.Kp[0], cm.corrector.Kd[0]]),
+                )
+                contacts.addContact(f"loop_contact_{k}", contact)
 
         # Costs and constraints
         costs = croc.CostModelSum(state, actuation.nu)
@@ -94,7 +119,9 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
             costs.addCost("com", comCost, p.comWeight)
 
         if p.vcomWeight > 0:
-            comVelResidual = sobec.ResidualModelCoMVelocity(state, p.vcomRef, actuation.nu)
+            comVelResidual = sobec.ResidualModelCoMVelocity(
+                state, p.vcomRef, actuation.nu
+            )
             comVelAct = croc.ActivationModelWeightedQuad(p.vcomImportance)
             comVelCost = croc.CostModelResidual(state, comVelAct, comVelResidual)
             costs.addCost("comVelCost", comVelCost, p.vcomWeight)
@@ -105,7 +132,9 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                 continue
 
             if p.copWeight > 0:
-                copResidual = sobec.ResidualModelCenterOfPressure(state, cid, actuation.nu)
+                copResidual = sobec.ResidualModelCenterOfPressure(
+                    state, cid, actuation.nu
+                )
                 copAct = croc.ActivationModelWeightedQuad(
                     np.array([1.0 / p.footSize**2] * 2)
                 )
@@ -126,7 +155,9 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                     )
 
             if p.centerOfFrictionWeight > 0:
-                cofResidual = sobec.ResidualModelCenterOfPressure(state, cid, actuation.nu)
+                cofResidual = sobec.ResidualModelCenterOfPressure(
+                    state, cid, actuation.nu
+                )
                 cofAct = croc.ActivationModelWeightedQuad(
                     np.array([1.0 / p.footSize**2] * 2)
                 )
@@ -172,7 +203,9 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                 w = np.array(p.forceImportance**2)
                 w[2] = 0
                 coneAxisAct = croc.ActivationModelWeightedQuad(w)
-                coneAxisCost = croc.CostModelResidual(state, coneAxisAct, coneAxisResidual)
+                coneAxisCost = croc.CostModelResidual(
+                    state, coneAxisAct, coneAxisResidual
+                )
                 costs.addCost(
                     "%s_coneaxis" % robot.model.frames[cid].name,
                     coneAxisCost,
@@ -215,8 +248,12 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                             ),
                         )
                     else:
-                        impactAct = croc.ActivationModelWeightedQuad(np.array([0, 0, 1]))
-                        impactCost = croc.CostModelResidual(state, impactAct, impactResidual)
+                        impactAct = croc.ActivationModelWeightedQuad(
+                            np.array([0, 0, 1])
+                        )
+                        impactCost = croc.CostModelResidual(
+                            state, impactAct, impactResidual
+                        )
                         costs.addCost(
                             "%s_altitudeimpact" % robot.model.frames[cid].name,
                             impactCost,
@@ -237,8 +274,8 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                             croc.ConstraintModelResidual(
                                 state,
                                 impactVelResidual,
-                                np.array([-1e-6]*6),
-                                np.array([1e-6]*6),
+                                np.array([-1e-6] * 6),
+                                np.array([1e-6] * 6),
                             ),
                         )
                     else:
@@ -264,7 +301,9 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                             ),
                         )
                     else:
-                        impactRotAct = croc.ActivationModelWeightedQuad(np.array([1, 1, 0]))
+                        impactRotAct = croc.ActivationModelWeightedQuad(
+                            np.array([1, 1, 0])
+                        )
                         impactRotCost = croc.CostModelResidual(
                             state, impactRotAct, impactRotResidual
                         )
@@ -344,7 +383,9 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                     np.array([-1000, -1000, 0.0]), np.array([1000, 1000, 1000])
                 )
                 groundColAct = croc.ActivationModelQuadraticBarrier(groundColBounds)
-                groundColCost = croc.CostModelResidual(state, groundColAct, groundColRes)
+                groundColCost = croc.CostModelResidual(
+                    state, groundColAct, groundColRes
+                )
                 costs.addCost(
                     "%s_groundcol" % robot.model.frames[fid].name,
                     groundColCost,
@@ -392,8 +433,8 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
             lowerBoundsq = robot.model.lowerPositionLimit
             upperBoundsq = robot.model.upperPositionLimit
 
-            lowerBoundsv = -np.ones(robot.model.nv)*maxfloat
-            upperBoundsv = np.ones(robot.model.nv)*maxfloat
+            lowerBoundsv = -np.ones(robot.model.nv) * maxfloat
+            upperBoundsv = np.ones(robot.model.nv) * maxfloat
 
             lowerBoundsx = np.concatenate([lowerBoundsq, lowerBoundsv])
             upperBoundsx = np.concatenate([upperBoundsq, upperBoundsv])
@@ -425,10 +466,17 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
             costs.addCost("jointAcc", accCost, p.refJointAcceleration)
 
         # Action
+
+        # from IPython import embed
+        # embed()
+
         damodel = croc.DifferentialActionModelContactFwdDynamics(
             state, actuation, contacts, costs, constraints, p.kktDamping, True
         )
         amodel = croc.IntegratedActionModelEuler(damodel, p.DT)
+
+        # from IPython import embed
+        # embed()
 
         models.append(amodel)
 
@@ -440,21 +488,34 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
     robot = robotWrapper
     p = params
     pattern = contactPattern[-1]
-
+    hasConstraints = False
     # Horizon length
     T = len(contactPattern) - 1
 
     state = croc.StateMultibody(robot.model)
-    if robot.actuationModel is None:
-        actuation = croc.ActuationModelFloatingBase(state)
-    else:
-        from .actuation_matrix import ActuationModelMatrix
-        act_matrix = np.zeros((robot.model.nv, len(robot.actuationModel.mot_ids_v)))
-        for iu, iv in enumerate(robot.actuationModel.mot_ids_v):
-            act_matrix[iv, iu] = 1
-        actuation = ActuationModelMatrix(state, np.shape(act_matrix)[1], act_matrix)
+    # Should be retrocompatible with Ludovic's case
+    try:
+        if robot.useActuationJacobian:
+            from .battobot_crocoddyl import (
+                ActuationModelMatrix as ActuationModelMatrixJa,
+            )
 
-    # Contacts
+            actuation = ActuationModelMatrixJa(state, 12, robot.battobotAct)
+
+    except:
+        if robot.actuationModel is None:
+            actuation = croc.ActuationModelFloatingBase(state)
+        else:
+            # Ludovic's case
+            hasConstraints = True
+            from .actuation_matrix import ActuationModelMatrix
+
+            act_matrix = np.zeros((robot.model.nv, len(robot.actuationModel.mot_ids_v)))
+            for iu, iv in enumerate(robot.actuationModel.mot_ids_v):
+                act_matrix[iv, iu] = 1
+            actuation = ActuationModelMatrix(state, np.shape(act_matrix)[1], act_matrix)
+
+        # Contacts
     contacts = croc.ContactModelMultiple(state, actuation.nu)
     for k, cid in enumerate(robot.contactIds):
         if not pattern[k]:
@@ -463,19 +524,24 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
             state, cid, pin.SE3.Identity(), pin.WORLD, actuation.nu, p.baumgartGains
         )
         contacts.addContact(robot.model.frames[cid].name + "_contact", contact)
-    for k, cm in enumerate(robot.loop_constraints_models):
-        assert cm.type == pin.ContactType.CONTACT_6D and cm.reference_frame == pin.ReferenceFrame.LOCAL
-        contact = croc.ContactModel6DLoop(
-            state,
-            cm.joint1_id,
-            cm.joint1_placement,
-            cm.joint2_id,
-            cm.joint2_placement,
-            pin.ReferenceFrame.LOCAL,
-            actuation.nu,
-            np.array([cm.corrector.Kp[0], cm.corrector.Kd[0]])
-        )
-        contacts.addContact(f"loop_contact_{k}", contact)
+
+    if hasConstraints:
+        for k, cm in enumerate(robot.loop_constraints_models):
+            assert (
+                cm.type == pin.ContactType.CONTACT_6D
+                and cm.reference_frame == pin.ReferenceFrame.LOCAL
+            )
+            contact = croc.ContactModel6DLoop(
+                state,
+                cm.joint1_id,
+                cm.joint1_placement,
+                cm.joint2_id,
+                cm.joint2_placement,
+                pin.ReferenceFrame.LOCAL,
+                actuation.nu,
+                np.array([cm.corrector.Kp[0], cm.corrector.Kd[0]]),
+            )
+            contacts.addContact(f"loop_contact_{k}", contact)
 
     # Costs
     costs = croc.CostModelSum(state, actuation.nu)
@@ -487,7 +553,9 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
         stateTerminalResidual = croc.ResidualModelState(
             state, stateTerminalTarget, actuation.nu
         )
-        stateTerminalAct = croc.ActivationModelWeightedQuad(p.stateTerminalImportance**2)
+        stateTerminalAct = croc.ActivationModelWeightedQuad(
+            p.stateTerminalImportance**2
+        )
         stateTerminalCost = croc.CostModelResidual(
             state, stateTerminalAct, stateTerminalResidual
         )
@@ -504,20 +572,24 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
 # ### SOLVER ########################################################################
 
 
-def buildSolver(robotWrapper, contactPattern, walkParams, solver='FDDP'):
+def buildSolver(robotWrapper, contactPattern, walkParams, solver="FDDP"):
     with_constraints = False
-    if solver == 'CSQP':
+    if solver == "CSQP":
         print("Using CSQP solver, creating constraints")
         with_constraints = True
-    models = buildRunningModels(robotWrapper, contactPattern, walkParams, with_constraints)
-    termmodel = buildTerminalModel(robotWrapper, contactPattern, walkParams, with_constraints)
+    models = buildRunningModels(
+        robotWrapper, contactPattern, walkParams, with_constraints
+    )
+    termmodel = buildTerminalModel(
+        robotWrapper, contactPattern, walkParams, with_constraints
+    )
 
     problem = croc.ShootingProblem(robotWrapper.x0, models, termmodel)
-    if solver == 'FDDP':
+    if solver == "FDDP":
         ddp = croc.SolverFDDP(problem)
         ddp.verbose = True
         ddp.th_stop = walkParams.solver_th_stop
-    elif solver == 'CSQP':
+    elif solver == "CSQP":
         try:
             import mim_solvers
         except ImportError:
@@ -535,7 +607,9 @@ def buildSolver(robotWrapper, contactPattern, walkParams, solver='FDDP'):
         # ddp.alpha = 1e-5
         ddp.with_callbacks = True
     else:
-        raise ValueError('Unknown solver: %s \n Supported option are FDDP and CSQP' % solver)
+        raise ValueError(
+            "Unknown solver: %s \n Supported option are FDDP and CSQP" % solver
+        )
     return ddp
 
 
@@ -577,10 +651,12 @@ class Solution:
                 (cd.data().jMf.inverse() * cd.data().f).vector
                 if cm.data().contact.type == pin.LOCAL
                 else cd.data().f.vector
-                for cm,cd in zip(m.differential.contacts.contacts,
-                                 d.differential.multibody.contacts.contacts)
+                for cm, cd in zip(
+                    m.differential.contacts.contacts,
+                    d.differential.multibody.contacts.contacts,
+                )
             ]
-            for m,d in zip(ddp.problem.runningModels,ddp.problem.runningDatas)
+            for m, d in zip(ddp.problem.runningModels, ddp.problem.runningDatas)
         ]
         self.fs0 = [
             np.concatenate(
@@ -594,9 +670,9 @@ class Solution:
                         ].f
                         if m.differential.contacts.contacts[
                             "%s_contact" % robotWrapper.model.frames[cid].name
-                        ].contact.type == pin.LOCAL
-                        else
-                         d.differential.multibody.contacts.contacts[
+                        ].contact.type
+                        == pin.LOCAL
+                        else d.differential.multibody.contacts.contacts[
                             "%s_contact" % robotWrapper.model.frames[cid].name
                         ].f
                     ).vector

@@ -83,6 +83,7 @@ class RobotWrapper:
         # The pinocchio model is what we are really interested by.
         q0 = self.model.referenceConfigurations[refPosture]
         self.x0 = np.concatenate([q0, np.zeros(self.model.nv)])
+        self.q0 = q0
         self.data = self.model.createData()
 
         # Some key elements of the model
@@ -93,3 +94,4 @@ class RobotWrapper:
         self.com0 = pin.centerOfMass(self.model, self.data, q0)
 
         self.actuationModel = None
+        #self.useActuationJacobian = False

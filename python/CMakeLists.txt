@@ -75,7 +75,10 @@ set(${PY_WALK_NAME}_PYTHON
     yaml_params.py
     plotter.py
     save_traj.py
-    actuation_matrix.py)
+    actuation_matrix.py
+    actuation_model.py
+    battobot_crocoddyl.py
+    instanciate_battobot_actuation.py)
 
 foreach(python ${${PY_WALK_NAME}_PYTHON})
   python_install_on_site(${PY_NAME}/walk_without_think ${python})
