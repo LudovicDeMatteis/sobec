@@ -48,6 +48,11 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
         except:
             if robot.actuationModel is None:
                 actuation = croc.ActuationModelFloatingBase(state)
+                # bellow is floating base reimplemented to add debug inside easily
+                #from .actuation_matrix import ActuationModelMatrix
+                #act_matrix = np.zeros((robot.model.nv, 12))
+                #act_matrix[6:, :] = np.eye(12)
+                #actuation = ActuationModelMatrix(state, 12, act_matrix)
             else:
                 # Ludovic's case
                 hasConstraints = True
@@ -505,6 +510,11 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
     except:
         if robot.actuationModel is None:
             actuation = croc.ActuationModelFloatingBase(state)
+            # bellow is floating base reimplemented to add debug inside easily
+            #from .actuation_matrix import ActuationModelMatrix
+            #act_matrix = np.zeros((robot.model.nv, 12))
+            #act_matrix[6:, :] = np.eye(12)
+            #actuation = ActuationModelMatrix(state, 12, act_matrix)
         else:
             # Ludovic's case
             hasConstraints = True
