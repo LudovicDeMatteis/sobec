@@ -1,5 +1,6 @@
 import pinocchio as pin
 import numpy as np
+from warnings import warn
 
 
 def addChildrenFrames(
@@ -60,7 +61,8 @@ class RobotWrapper:
         elif closed_loop:
             model_version = "closed_loop"
         if model_version is None:
-            raise RuntimeError("I need a robot version")
+            warn("No robot version inferred, assuming 'legs'")
+            model_version = "legs"
         self.name = "%s_%s" % (model.name, model_version)
 
         self.contactIds = [
@@ -81,7 +83,14 @@ class RobotWrapper:
         }
 
         # The pinocchio model is what we are really interested by.
-        q0 = self.model.referenceConfigurations[refPosture]
+        try:
+            q0 = self.model.referenceConfigurations[refPosture]
+        except KeyError:
+            warn(
+                "The reference posture '%s' is not available. Using pin.neutral."
+                % refPosture
+            )
+            q0 = pin.neutral(self.model)
         self.x0 = np.concatenate([q0, np.zeros(self.model.nv)])
         self.data = self.model.createData()
 
