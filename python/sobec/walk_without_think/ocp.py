@@ -37,11 +37,6 @@ def random_quaternion_xy(bound):
     
     return quat  # (x, y, z, w)
 
-
-print(random_quaternion_xy(np.radians(20)))
-
-
-
 def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=False, roughTerrainAnglesBound=0, ankleLimits=False):
     p = params
     robot = robotWrapper
@@ -537,30 +532,30 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
 
             ankleActuator1 = robot.battobotAct.actuators[5]
             ankleActuator2 = robot.battobotAct.actuators[6]
-            delta_m = np.array([0.0, 0.0])
-            qm_lower_limits = np.array([-np.pi/2, -np.pi/2])
-            qm_upper_limits = np.array([np.pi/2, np.pi/2])
+            delta_m = np.array([ankleActuator1.delta_m, ankleActuator2.delta_m])
+            qm_lower_limits = np.array([ankleActuator1.qm_min, ankleActuator2.qm_min])
+            qm_upper_limits = np.array([ankleActuator1.qm_max, ankleActuator2.qm_max])
 
             ankleLimitsResidual = ResidualModelAnkleLimits(
                 state, 2, actuation.nu, ankleActuator1, ankleActuator2, delta_m
             )
             ankleLimitsAct = croc.ActivationModelQuadraticBarrier(croc.ActivationBounds(qm_lower_limits, qm_upper_limits, 0.1))
             ankleLimitsCost = croc.CostModelResidual(state, ankleLimitsAct, ankleLimitsResidual)
-            costs.addCost("ankle right limits", ankleLimitsCost, 1.0)
+            costs.addCost("ankle right limits", ankleLimitsCost, p.ankleLimitsWeight)
 
             # --- ankle left
             ankleActuator1 = robot.battobotAct.actuators[7]
             ankleActuator2 = robot.battobotAct.actuators[8]
-            delta_m = np.array([0.0, 0.0])
-            qm_lower_limits = np.array([-np.pi/2, -np.pi/2])
-            qm_upper_limits = np.array([np.pi/2, np.pi/2])
+            delta_m = np.array([ankleActuator1.delta_m, ankleActuator2.delta_m])
+            qm_lower_limits = np.array([ankleActuator1.qm_min, ankleActuator2.qm_min])
+            qm_upper_limits = np.array([ankleActuator1.qm_max, ankleActuator2.qm_max])
 
             ankleLimitsResidual = ResidualModelAnkleLimits(
                 state, 2, actuation.nu, ankleActuator1, ankleActuator2, delta_m
             ) 
             ankleLimitsAct = croc.ActivationModelQuadraticBarrier(croc.ActivationBounds(qm_lower_limits, qm_upper_limits, 0.1))
             ankleLimitsCost = croc.CostModelResidual(state, ankleLimitsAct, ankleLimitsResidual)
-            costs.addCost("ankle left limits", ankleLimitsCost, 1.0)
+            costs.addCost("ankle left limits", ankleLimitsCost, p.ankleLimitsWeight)
 
 
         damodel = croc.DifferentialActionModelContactFwdDynamics(
@@ -568,8 +563,7 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
         )
         amodel = croc.IntegratedActionModelEuler(damodel, p.DT)
 
-        # from IPython import embed
-        # embed()
+
 
         models.append(amodel)
 
