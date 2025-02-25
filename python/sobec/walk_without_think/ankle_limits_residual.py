@@ -44,7 +44,7 @@ class ResidualModelAnkleLimits(croc.ResidualModelAbstract):
         self.ankleActuator2.actuation(x[:self.ankleActuator2.model.nq], np.zeros(self.ankleActuator2.nu))
         self.m_1 = self.ankleActuator1.m
         self.m_2 = self.ankleActuator2.m
-        data.r = np.array([self.m_1, self.m_2]) + np.array(self.delta_m)
+        data.r = np.array([self.m_1[0], self.m_2[0]]) + np.array(self.delta_m)
 
     def calcDiff(self, data, x, u):
         self.calc(data, x, u)

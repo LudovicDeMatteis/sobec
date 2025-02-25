@@ -562,6 +562,7 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
             ankleLimitsCost = croc.CostModelResidual(state, ankleLimitsAct, ankleLimitsResidual)
             costs.addCost("ankle left limits", ankleLimitsCost, 1.0)
 
+
         damodel = croc.DifferentialActionModelContactFwdDynamics(
             state, actuation, contacts, costs, constraints, p.kktDamping, True
         )
