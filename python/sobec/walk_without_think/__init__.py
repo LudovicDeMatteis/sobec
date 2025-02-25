@@ -16,7 +16,7 @@ from .actuation_matrix import ActuationModelMatrix
 from .actuation_model import *
 from .battobot_crocoddyl import ActuationModelMatrix as ActuationModelMatrixJa
 from .instanciate_battobot_actuation import *
-
+from .ankle_limits_residual import ResidualModelAnkleLimits as ResidualModelAnkleLimits
 # Don't include plotter by default, it breaks bullet
 # from . import plotter
 # from .plotter import WalkPlotter

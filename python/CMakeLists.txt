@@ -78,6 +78,7 @@ set(${PY_WALK_NAME}_PYTHON
     actuation_matrix.py
     actuation_model.py
     battobot_crocoddyl.py
+    ankle_limits_residual.py
     instanciate_battobot_actuation.py)
 
 foreach(python ${${PY_WALK_NAME}_PYTHON})

@@ -3,7 +3,7 @@ import sys
 import pinocchio as pin
 import crocoddyl as croc
 import numpy as np
-
+import scipy.spatial.transform
 
 # Local imports
 import sobec
@@ -15,7 +15,34 @@ if sys.version_info.major < 3:
     FileNotFoundError = IOError
 
 
-def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=False):
+def random_quaternion_xy(bound):
+    """
+    Random quaternion for contact orientation perturbation.
+    
+    # Arguments : bounds of the uniform distribution of the angle in degrees    
+                  clip: maximum angle in degrees
+
+    Output :
+    - quaternion under the form (x, y, z, w)
+    """
+    # Normal distribution of the angle
+    angle = np.random.uniform(-bound, bound)
+
+    # Axis sampling in XY plane
+    theta = np.random.uniform(0, 2 * np.pi)
+    axis = np.array([np.cos(theta), np.sin(theta), 0])  
+
+    # Quaternion
+    quat = scipy.spatial.transform.Rotation.from_rotvec(angle * axis).as_quat()
+    
+    return quat  # (x, y, z, w)
+
+
+print(random_quaternion_xy(np.radians(20)))
+
+
+
+def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=False, roughTerrainAnglesBound=0, ankleLimits=False):
     p = params
     robot = robotWrapper
 
@@ -28,7 +55,7 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
     models = []
 
     hasConstraints = False
-
+    
     # #################################################################################
     for t, pattern in enumerate(contactPattern[:-1]):
         # print("time t=%s %s" % (t, pattern))
@@ -69,11 +96,24 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
 
         # Contacts
         contacts = croc.ContactModelMultiple(state, actuation.nu)
+        se3_references = []
         for k, cid in enumerate(robot.contactIds):
+            
+            if roughTerrainAnglesBound != 0:
+                # add random orientation perturbation to the reference frame
+                se3_ref = pin.XYZQUATToSE3(np.concatenate((np.zeros(3),random_quaternion_xy(roughTerrainAnglesBound))))
+                se3_references.append(se3_ref)
+            else:
+                se3_ref = pin.SE3.Identity()
+
+
             if not pattern[k]:
                 continue
+
+            print("ref foot", se3_ref)
+
             contact = croc.ContactModel6D(
-                state, cid, pin.SE3.Identity(), pin.WORLD, actuation.nu, p.baumgartGains
+                state, cid, se3_ref, pin.WORLD, actuation.nu, p.baumgartGains
             )
             contacts.addContact(robot.model.frames[cid].name + "_contact", contact)
 
@@ -290,33 +330,50 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
                             impactVelCost,
                             p.impactVelocityWeight / p.DT,
                         )
+                if roughTerrainAnglesBound != 0:
+                    # add random orientation perturbation to the reference frame
 
-                if p.impactRotationWeight > 0:
-                    impactRotResidual = croc.ResidualModelFrameRotation(
-                        state, cid, np.eye(3), actuation.nu
+                    impactOrientationResidual = croc.ResidualModelFrameRotation(
+                        state, cid, se3_references[k].rotation, actuation.nu
                     )
-                    if with_constraints:
-                        constraints.addConstraint(
-                            "%s_rotimpact" % robot.model.frames[cid].name,
-                            croc.ConstraintModelResidual(
-                                state,
-                                impactRotResidual,
-                                np.array([-1e-6, -1e-6, -np.inf]),
-                                np.array([1e-6, 1e-6, np.inf]),
-                            ),
+                    impactOrientationAct = croc.ActivationModelWeightedQuad(
+                        np.array([1, 1, 0])
+                    )
+                    impactOrientationCost = croc.CostModelResidual(
+                        state, impactOrientationAct, impactOrientationResidual
+                    )
+                    costs.addCost(
+                        "%s_orientationimpact" % robot.model.frames[cid].name,
+                        impactOrientationCost,
+                        p.impactRotationWeight / p.DT,
+                    )
+                else:
+                    if p.impactRotationWeight > 0:
+                        impactRotResidual = croc.ResidualModelFrameRotation(
+                            state, cid, np.eye(3), actuation.nu
                         )
-                    else:
-                        impactRotAct = croc.ActivationModelWeightedQuad(
-                            np.array([1, 1, 0])
-                        )
-                        impactRotCost = croc.CostModelResidual(
-                            state, impactRotAct, impactRotResidual
-                        )
-                        costs.addCost(
-                            "%s_rotimpact" % robot.model.frames[cid].name,
-                            impactRotCost,
-                            p.impactRotationWeight / p.DT,
-                        )
+                        if with_constraints:
+                            constraints.addConstraint(
+                                "%s_rotimpact" % robot.model.frames[cid].name,
+                                croc.ConstraintModelResidual(
+                                    state,
+                                    impactRotResidual,
+                                    np.array([-1e-6, -1e-6, -np.inf]),
+                                    np.array([1e-6, 1e-6, np.inf]),
+                                ),
+                            )
+                        else:
+                            impactRotAct = croc.ActivationModelWeightedQuad(
+                                np.array([1, 1, 0])
+                            )
+                            impactRotCost = croc.CostModelResidual(
+                                state, impactRotAct, impactRotResidual
+                            )
+                            costs.addCost(
+                                "%s_rotimpact" % robot.model.frames[cid].name,
+                                impactRotCost,
+                                p.impactRotationWeight / p.DT,
+                            )
 
                 if p.refMainJointsAtImpactWeight > 0:
                     impactRefJointsResidual = croc.ResidualModelState(
@@ -472,8 +529,38 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
 
         # Action
 
-        # from IPython import embed
-        # embed()
+
+        if ankleLimits:
+            from .ankle_limits_residual import ResidualModelAnkleLimits
+
+            # --- ankle right
+
+            ankleActuator1 = robot.battobotAct.actuators[5]
+            ankleActuator2 = robot.battobotAct.actuators[6]
+            delta_m = np.array([0.0, 0.0])
+            qm_lower_limits = np.array([-np.pi/2, -np.pi/2])
+            qm_upper_limits = np.array([np.pi/2, np.pi/2])
+
+            ankleLimitsResidual = ResidualModelAnkleLimits(
+                state, 2, actuation.nu, ankleActuator1, ankleActuator2, delta_m
+            )
+            ankleLimitsAct = croc.ActivationModelQuadraticBarrier(croc.ActivationBounds(qm_lower_limits, qm_upper_limits, 0.1))
+            ankleLimitsCost = croc.CostModelResidual(state, ankleLimitsAct, ankleLimitsResidual)
+            costs.addCost("ankle right limits", ankleLimitsCost, 1.0)
+
+            # --- ankle left
+            ankleActuator1 = robot.battobotAct.actuators[7]
+            ankleActuator2 = robot.battobotAct.actuators[8]
+            delta_m = np.array([0.0, 0.0])
+            qm_lower_limits = np.array([-np.pi/2, -np.pi/2])
+            qm_upper_limits = np.array([np.pi/2, np.pi/2])
+
+            ankleLimitsResidual = ResidualModelAnkleLimits(
+                state, 2, actuation.nu, ankleActuator1, ankleActuator2, delta_m
+            ) 
+            ankleLimitsAct = croc.ActivationModelQuadraticBarrier(croc.ActivationBounds(qm_lower_limits, qm_upper_limits, 0.1))
+            ankleLimitsCost = croc.CostModelResidual(state, ankleLimitsAct, ankleLimitsResidual)
+            costs.addCost("ankle left limits", ankleLimitsCost, 1.0)
 
         damodel = croc.DifferentialActionModelContactFwdDynamics(
             state, actuation, contacts, costs, constraints, p.kktDamping, True
@@ -489,7 +576,7 @@ def buildRunningModels(robotWrapper, contactPattern, params, with_constraints=Fa
 
 
 # ### TERMINAL MODEL ##################################################################
-def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=False):
+def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=False, roughTerrainAnglesBound=0):
     robot = robotWrapper
     p = params
     pattern = contactPattern[-1]
@@ -528,10 +615,18 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
         # Contacts
     contacts = croc.ContactModelMultiple(state, actuation.nu)
     for k, cid in enumerate(robot.contactIds):
+
+        if roughTerrainAnglesBound != 0:
+            # add random orientation perturbation to the reference frame
+            se3_ref = pin.XYZQUATToSE3(np.concatenate((np.zeros(3),random_quaternion_xy(roughTerrainAnglesBound))))
+        else:
+            se3_ref = pin.SE3.Identity()
+
         if not pattern[k]:
             continue
+        print("ref foot", se3_ref)
         contact = croc.ContactModel6D(
-            state, cid, pin.SE3.Identity(), pin.WORLD, actuation.nu, p.baumgartGains
+            state, cid, se3_ref, pin.WORLD, actuation.nu, p.baumgartGains
         )
         contacts.addContact(robot.model.frames[cid].name + "_contact", contact)
 
@@ -582,16 +677,16 @@ def buildTerminalModel(robotWrapper, contactPattern, params, with_constraints=Fa
 # ### SOLVER ########################################################################
 
 
-def buildSolver(robotWrapper, contactPattern, walkParams, solver="FDDP"):
+def buildSolver(robotWrapper, contactPattern, walkParams, solver="FDDP", roughTerrainAnglesBound=0,ankleLimits=False):
     with_constraints = False
     if solver == "CSQP":
         print("Using CSQP solver, creating constraints")
         with_constraints = True
     models = buildRunningModels(
-        robotWrapper, contactPattern, walkParams, with_constraints
+        robotWrapper, contactPattern, walkParams, with_constraints, roughTerrainAnglesBound, ankleLimits
     )
     termmodel = buildTerminalModel(
-        robotWrapper, contactPattern, walkParams, with_constraints
+        robotWrapper, contactPattern, walkParams, with_constraints, roughTerrainAnglesBound
     )
 
     problem = croc.ShootingProblem(robotWrapper.x0, models, termmodel)
