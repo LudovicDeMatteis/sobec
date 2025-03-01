@@ -43,7 +43,6 @@ def buildRunningModels(
     contactPattern,
     params,
     with_constraints=False,
-    ankleLimits=False,
 ):
     p = params
     robot = robotWrapper
@@ -499,9 +498,8 @@ def buildRunningModels(
 
         # Action
 
-        if ankleLimits:
+        if p.ankleLimitsWeight > 0:
             from .ankle_limits_residual import ResidualModelAnkleLimits
-
             # --- ankle right
 
             ankleActuator1 = robot.battobotAct.actuators[5]
@@ -555,7 +553,6 @@ def buildTerminalModel(
     contactPattern,
     params,
     with_constraints=False,
-    roughTerrainAnglesBound=0,
 ):
     robot = robotWrapper
     p = params
@@ -654,7 +651,6 @@ def buildSolver(
     contactPattern,
     walkParams,
     solver="FDDP",
-    ankleLimits=False,
 ):
     with_constraints = False
     if solver == "CSQP":
@@ -665,7 +661,6 @@ def buildSolver(
         contactPattern,
         walkParams,
         with_constraints,
-        ankleLimits,
     )
     termmodel = buildTerminalModel(
         robotWrapper,
